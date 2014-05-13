@@ -17,6 +17,7 @@ namespace CppSharp
     class ParserGen : ILibrary
     {
         const string LINUX_INCLUDE_BASE_DIR = "../../../../deps/x86_64-linux-gnu";
+        const string LINUX_32_BIT_INCLUDE_BASE_DIR = "../../../../deps/i386-linux-gnu";
 
         internal readonly GeneratorKind Kind;
         internal readonly string Triple;
@@ -60,8 +61,11 @@ namespace CppSharp
             if (Triple.Contains("apple"))
                 SetupMacOptions(options);
 
-            if (Triple.Contains("linux"))
+            if (Triple.Contains("linux") && Triple.Contains("x86_64"))
                 SetupLinuxOptions(options);
+
+            if (Triple.Contains("linux") && Triple.Contains("i386"))
+                SetupLinux32Options(options);
 
             var basePath = Path.Combine(GetSourceDirectory(), "CppParser");
 
@@ -108,6 +112,33 @@ namespace CppSharp
             foreach (var dir in sysincdirs)
             {
                 options.addSystemIncludeDirs(LINUX_INCLUDE_BASE_DIR + dir);
+            }
+#endif
+        }
+
+        private static void SetupLinux32Options(DriverOptions options)
+        {
+            options.MicrosoftMode = false;
+            options.NoBuiltinIncludes = true;
+
+            string[] sysincdirs = new[] {
+                "/usr/include/c++/4.8",
+                "/usr/include/i386-linux-gnu/c++/4.8",
+                "/usr/include/c++/4.8/backward",
+                "/usr/lib/gcc/i686-linux-gnu/4.8/include",
+                "/usr/include/i386-linux-gnu",
+                "/usr/include",
+            };
+
+#if OLD_PARSER
+            foreach (var dir in sysincdirs)
+            {
+                options.SystemIncludeDirs.Add(LINUX_INCLUDE_BASE_DIR + dir);
+            }
+#else
+            foreach (var dir in sysincdirs)
+            {
+                options.addSystemIncludeDirs(LINUX_32_BIT_INCLUDE_BASE_DIR + dir);
             }
 #endif
         }
@@ -176,6 +207,13 @@ namespace CppSharp
             {
                 Console.WriteLine("Generating the C# parser bindings for Linux...");
                 ConsoleDriver.Run(new ParserGen(GeneratorKind.CSharp, "x86_64-linux-gnu",
+                     CppAbi.Itanium));
+            }
+
+            if (Directory.Exists(LINUX_32_BIT_INCLUDE_BASE_DIR))
+            {
+                Console.WriteLine("Generating the C# parser bindings for 32-bit Linux...");
+                ConsoleDriver.Run(new ParserGen(GeneratorKind.CSharp, "i386-linux-gnu",
                      CppAbi.Itanium));
             }
         }
